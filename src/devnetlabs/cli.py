@@ -6,6 +6,9 @@ from datetime import datetime
 from pathlib import Path
 
 from docopt import docopt
+from devnetlabs import labs
+
+logger = logging.getLogger(__name__)
 
 # Dynamically create the log filename using current timestamp
 logname = f"devnetlabs_{datetime.now():%Y-%m-%d_%H-%M-%S}.log"
@@ -30,6 +33,12 @@ logging.basicConfig(
 
 
 def run():
+    """
+    Start of application
+    """
     arguments = docopt(__doc__, version="0.0.0")
-    logging.debug(f"Arguments passed in:\n{arguments}")
+    logger.debug(f"Arguments passed in:\n{arguments}")
+
+    logger.debug("Starting menu system")
+    labs.menu()
 
