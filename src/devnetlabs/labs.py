@@ -55,6 +55,7 @@ class Menu:
             try:
                 self.display()
                 selection = int(input("\n  Select an option >> "))
+                logger.debug(f"User selected option {selection}")
 
                 # Validate selection range
                 if selection not in range(1, len(self._options) + 1):
@@ -70,28 +71,56 @@ class Menu:
                 input("  Press Enter to continue...\n")
                 continue
 
-def jlabs_exit():
+def labs():
+    """
+    Displays a sub-menu for lab options
+    """
+    menu_title = utils.menu_title1
+    menu_subtitle = "labs"
+    labs_menu = Menu(
+        menu_title,
+        menu_subtitle,
+        [
+            ("Get lab details", get_lab),
+            ("Return to the main menu", menu),
+            ("Exit", _exit),
+        ],
+    )
+    while True:
+        labs_menu.get_input()
+
+def get_lab():
+    """
+    Returns the details of a given lab
+    """
+    utils.clear_screen()
+    logger.debug("got lab")
+    print("get lab called")
+    input("Press [ENTER] to continue...")
+
+def _exit():
     """
     Clears the screen, logs an exit message, and terminates the application.
     """
     utils.clear_screen()
-    logger.info("Exiting application")
+    logger.debug("Exiting application")
     raise SystemExit("")
-
 
 def menu():
     """
     Displays the main menu and handles user input in an infinite loop.
     """
-    menu_title = utils.menu_title2
+    menu_title = utils.menu_title1
     menu_subtitle = "Main Menu"
-    logger.debug("Creating instance of class Menu")
+    logger.debug("Creating the Main Menu")
     menu = Menu(
         menu_title,
         menu_subtitle,
         [
-            ("Exit", jlabs_exit),
+            ("labs", labs),
+            ("exit", _exit),
         ],
     )
     while True:
         menu.get_input()
+

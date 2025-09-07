@@ -32,10 +32,10 @@ def clear_screen():
     Runs the terminal clear screen command for the OS used
     """
     if platform.system().lower() == "windows":
-        logger.debug("Sending command cls to the terminal")
+        logger.debug("Sending the cls command to the terminal")
         cmd = "cls"
     else:
-        logger.debug("Sending command clear to the terminal")
+        logger.debug("Sending the clear command to the terminal")
         cmd = "clear"
     os.system(cmd)
 
@@ -43,7 +43,7 @@ def clear_screen():
 # https://patohttps://patooftware/taag/ using font "ghosts"
 
 menu_title1 = colorme(
-    r"""
+r"""
  ____             _   _      _   _          _         
 |  _ \  _____   _| \ | | ___| |_| |    __ _| |__  ___ 
 | | | |/ _ \ \ / /  \| |/ _ \ __| |   / _` | '_ \/ __|
@@ -54,7 +54,7 @@ menu_title1 = colorme(
 )
 
 menu_title2 = colorme(
-    r"""
+r"""
  _____                                                        _____ 
 ( ___ )------------------------------------------------------( ___ )
  |   |                                                        |   | 

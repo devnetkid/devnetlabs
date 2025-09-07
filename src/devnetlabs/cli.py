@@ -39,6 +39,6 @@ def run():
     arguments = docopt(__doc__, version="0.0.0")
     logger.debug(f"Arguments passed in:\n{arguments}")
 
-    logger.debug("Starting menu system")
+    logger.debug("Starting application")
     labs.menu()
 
