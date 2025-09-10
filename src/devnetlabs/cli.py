@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from docopt import docopt
+
 from devnetlabs import labs
 
 logger = logging.getLogger(__name__)
@@ -40,5 +41,4 @@ def run():
     logger.debug(f"Arguments passed in:\n{arguments}")
 
     logger.debug("Starting application")
-    labs.menu()
-
+    labs.main_menu()

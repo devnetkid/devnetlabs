@@ -1,8 +1,6 @@
-import logging
 import os
 import platform
 
-logger = logging.getLogger(__name__)
 
 def colorme(msg, color):
     """
@@ -12,17 +10,13 @@ def colorme(msg, color):
         color (str): Sets the color of text displayed on the terminal
     """
     if color == "red":
-        logger.debug("Setting terminal color to red")
         wrapper = "\033[91m"
     elif color == "blue":
-        logger.debug("Setting terminal color to blue")
         wrapper = "\033[94m"
     elif color == "green":
-        logger.debug("Setting terminal color to green")
         wrapper = "\033[92m"
     else:
         # Defaults to white if invalid color is given
-        logger.debug("Invalid color {color}, setting terminal color to white")
         wrapper = "\033[47m"
     return wrapper + msg + "\033[0m"
 
@@ -32,18 +26,16 @@ def clear_screen():
     Runs the terminal clear screen command for the OS used
     """
     if platform.system().lower() == "windows":
-        logger.debug("Sending the cls command to the terminal")
         cmd = "cls"
     else:
-        logger.debug("Sending the clear command to the terminal")
         cmd = "clear"
     os.system(cmd)
 
 
-# https://patohttps://patooftware/taag/ using font "ghosts"
+# https://www.asciiart.eu/text-to-ascii-art
 
 menu_title1 = colorme(
-r"""
+    r"""
  ____             _   _      _   _          _         
 |  _ \  _____   _| \ | | ___| |_| |    __ _| |__  ___ 
 | | | |/ _ \ \ / /  \| |/ _ \ __| |   / _` | '_ \/ __|
@@ -54,7 +46,7 @@ r"""
 )
 
 menu_title2 = colorme(
-r"""
+    r"""
  _____                                                        _____ 
 ( ___ )------------------------------------------------------( ___ )
  |   |                                                        |   | 
@@ -68,4 +60,3 @@ r"""
 """,
     "red",
 )
-
