@@ -1,13 +1,17 @@
 import os
 import platform
 import toml
+from pathlib import Path
+
 
 def write_toml(data):
     """
     Write the given data to a file using the toml format
     """
+    config_path = Path.home() / os.getenv("LABS_CONFIG_PATH", Path("devnetlabs/labs/"))
+    config_path.mkdir(parents=True, exist_ok=True)  # Creates directory if not already there
     filename = "config.toml"
-    with open(filename, "w") as f:
+    with open(config_path / filename, "w") as f:
         toml.dump(data, f)
 
 def load_toml(filename):
