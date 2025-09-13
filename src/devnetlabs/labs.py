@@ -1,9 +1,11 @@
 import logging
 
-from devnetlabs import menu, utils
+from devnetlabs import eveng, menu, utils
 
 logger = logging.getLogger(__name__)
 
+# Create an eveng client to interact with the eveng api
+client = eveng.EveNgClient("192.168.11.99")
 
 def labs():
     """
@@ -16,6 +18,7 @@ def labs():
         menu_subtitle,
         [
             ("Build toml from existing lab", build_toml_from_lab),
+            ("Create a lab from toml", create_lab),
             ("Return to the main menu", main_menu),
             ("Exit", devnetlabs_exit),
         ],
@@ -28,9 +31,46 @@ def build_toml_from_lab():
     """
     Returns a toml formatted file representing the specified eve-ng lab
     """
+    toml_data = {}
     lab_name = input("Enter the name of the existing eve-ng lab: ")
     logger.debug(f"Building toml file from eve-ng lab {lab_name}")
+    client.login()
+    # Prepare the lab details
+    lab_data = client.get_lab(lab_name)["data"]
+    lab_data.pop("id")
+    lab_data.pop("filename")
+    lab_data["path"] = "/"
+    lab_data["name"] = "devnetlab"
+    toml_data["lab"] = lab_data
+    # Prepare the nodes
+    nodes = list()
+    lab_nodes = client.get_lab_nodes(lab_name)["data"]
+    for node in lab_nodes.values():
+        node.pop("url")
+        node.pop("ram")
+        node.pop("cpu")
+        node.pop("uuid")
+        node.pop("config")
+        node.pop("config_list")
+        nodes.append(node)
+    toml_data["nodes"] = nodes
+    # Prepare the cables
+    lab_cables = client.get_lab_topology(lab_name)["data"]
+    for cable in lab_cables:
+        cable.pop("network_id")
+    toml_data["cables"] = lab_cables
+    utils.write_toml(toml_data)
     input("Press [ENTER] to continue...")
+
+
+def create_lab():
+    """
+    Creates a new lab
+    """
+    new_lab = utils.load_toml("config.toml")
+    print(new_lab["lab"])
+    client.login()
+    client.create_lab(new_lab["lab"])
 
 
 def devnetlabs_exit():
@@ -38,6 +78,7 @@ def devnetlabs_exit():
     Clears the screen, logs an exit message, and terminates the application.
     """
     utils.clear_screen()
+    client.logout()
     logger.debug("Exiting application")
     raise SystemExit("")
 

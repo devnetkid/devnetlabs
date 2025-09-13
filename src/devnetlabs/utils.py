@@ -1,6 +1,21 @@
 import os
 import platform
+import toml
 
+def write_toml(data):
+    """
+    Write the given data to a file using the toml format
+    """
+    filename = "config.toml"
+    with open(filename, "w") as f:
+        toml.dump(data, f)
+
+def load_toml(filename):
+    """
+    Write the given data to a file using the toml format
+    """
+    with open(filename, "r") as f:
+        return toml.load(f)
 
 def colorme(msg, color):
     """
