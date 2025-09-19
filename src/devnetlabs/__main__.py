@@ -3,7 +3,6 @@
 from devnetlabs import cli
 
 
-
 def main():
     cli.run()
 
