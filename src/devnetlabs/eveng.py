@@ -80,14 +80,38 @@ class EveNgClient:
         else:
             raise Exception(f"Failed to fetch labs: {response.text}")
 
-    def create_lab(self, new_lab):
-        if not self.logged_in:
-            raise Exception("Not logged in.")
+    def create_lab(self, lab):
+        """
+        Creates a new lab in eve-ng from a toml configuration file
+
+        Args:
+            lab (dict): toml configuration file describing lab components.
+        """
         url = f"{self.base_url}/labs"
-        data = json.dumps(new_lab)
-        response = self.session.post(url, data=data, verify=False)
-        if response.status_code == 200:
+        data = json.dumps(lab)
+        try:
+            response = self.session.post(url, data=data, verify=False)
             return response.json()
+        except Exception as err:
+            print(f"Failed to create lab: {err}")
+
+    def delete_lab(self, lab):
+        """
+        Deletes a lab from eve-ng
+
+        Args:
+            lab (string): The name of the lab to delete.
+        """
+        url = f"{self.base_url}/labs/{lab}.unl"
+        response = self.session.delete(url, verify=False)
+        return response.json()
+
+    def create_node(self, lab, node_data):
+        url = f"{self.base_url}/labs/{lab}.unl/nodes"
+        data = json.dumps(node_data)
+        response = self.session.post(url=url, data=data, verify=False)
+        if response.status_code == 201:
+            print("Lab node created")
         else:
             raise Exception(f"Failed to fetch labs: {response.text}")
 

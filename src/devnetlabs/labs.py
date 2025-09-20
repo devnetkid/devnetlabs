@@ -20,6 +20,7 @@ def labs():
         [
             ("Build toml from existing lab", build_toml_from_lab),
             ("Create a lab from toml", create_lab),
+            ("Delete a lab", delete_lab),
             ("Return to the main menu", main_menu),
             ("Exit", devnetlabs_exit),
         ],
@@ -86,10 +87,29 @@ def create_lab():
     new_lab = utils.load_toml(config)
     logger.debug(f"Contents of '{config}'\n{new_lab}")
     client.login()
-    if client.create_lab(new_lab["lab"]):
+    response = client.create_lab(new_lab["lab"])
+    if response["code"] == 200:
+        for node in new_lab["nodes"]:
+            client.create_node(new_lab["lab"]["name"], node)
+        print("Lab has been successfully created")
         logger.info(f"Successfully created lab {config}")
-    else:
+    elif response["code"] == 400:
         logger.debug(f"Failed to load and create lab {config}")
+        print(utils.colorme(response["message"], "red"))
+    else:
+        print(utils.colorme(response["message"], "red"))
+    input("Press [ENTER] to continue...")
+
+
+def delete_lab():
+    """
+    Delete a lab from eve-ng
+    """
+    lab_name = input("Enter the name of the lab to delete: ")
+    client.login()
+    response = client.delete_lab(lab_name)
+    print(response)
+    input("Press [ENTER] to continue...")
 
 
 def devnetlabs_exit():

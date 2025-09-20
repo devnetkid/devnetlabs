@@ -83,7 +83,8 @@ def colorme(msg, color):
     Sets the terminal color requested, defaults to white
 
     Args:
-        color (str): Sets the color of text displayed on the terminal
+        msg (str): The message to be displayed as color
+        color (str): Sets the terminal color of msg
     """
     if color == "red":
         wrapper = "\033[91m"
