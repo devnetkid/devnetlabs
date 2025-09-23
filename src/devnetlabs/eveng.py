@@ -44,10 +44,12 @@ class EveNgClient:
             print(f"General error occurred: {err}")
 
     def list_labs(self):
+        """
+        List the folders and labs in the root folder
+        """
         url = f"{self.base_url}/folders/"
         response = self.session.get(url, verify=False)
-        if response.status_code == 200:
-            return response.json()
+        return response.json()
 
     def get_lab(self, lab_name):
         if not self.logged_in:
@@ -80,6 +82,12 @@ class EveNgClient:
         else:
             raise Exception(f"Failed to fetch labs: {response.text}")
 
+    def get_intf(self, lab_name, node_id):
+        """Get specified lab topology"""
+        url = f"{self.base_url}/labs/{lab_name}.unl/nodes/{node_id}/interfaces"
+        response = self.session.get(url, verify=False)
+        return response.json()
+
     def create_lab(self, lab):
         """
         Creates a new lab in eve-ng from a toml configuration file
@@ -110,10 +118,34 @@ class EveNgClient:
         url = f"{self.base_url}/labs/{lab}.unl/nodes"
         data = json.dumps(node_data)
         response = self.session.post(url=url, data=data, verify=False)
-        if response.status_code == 201:
-            print("Lab node created")
-        else:
-            raise Exception(f"Failed to fetch labs: {response.text}")
+        return response.json()
+
+    def create_network(self, lab, new_network):
+        """
+        Creates a network object in eve-ng
+
+        Args:
+            lab (string): The name of the lab to delete.
+            new_network (dict): The network object to be created.
+        """
+        url = f"{self.base_url}/labs/{lab}.unl/networks"
+        data = json.dumps(new_network)
+        response = self.session.post(url=url, data=data, verify=False)
+        return response.json()
+
+    def set_intf(self, lab_name, node_id, data):
+        """Get specified lab topology"""
+        url = f"{self.base_url}/labs/{lab_name}.unl/nodes/{node_id}/interfaces"
+        data = json.dumps(data)
+        response = self.session.put(url=url, data=data, verify=False)
+        return response.json()
+
+    def modify_network(self, lab_name, bridge_id, data):
+        """Creates a new lab in eve-ng"""
+        url = f"{self.base_url}/labs/{lab_name}.unl/networks/{bridge_id}"
+        data = json.dumps(data)
+        response = self.session.put(url=url, data=data, verify=False)
+        return response.json()
 
     def logout(self):
         url = f"{self.base_url}/auth/logout"

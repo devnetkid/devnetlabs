@@ -39,9 +39,9 @@ def build_toml_from_lab():
     logger.debug(f"Building toml file from eve-ng lab {lab_name}")
     file_lab_name = input("Enter the name of the file to be written: ")
     client.login()
-    res = client.list_labs()
-    if res["code"] == 200:
-        for lab in res["data"]["labs"]:
+    response = client.list_labs()
+    if response["code"] == 200:
+        for lab in response["data"]["labs"]:
             if lab_name in lab["file"]:
                 lab_exists = True
     if lab_exists:
@@ -80,17 +80,64 @@ def build_toml_from_lab():
 
 def create_lab():
     """
-    Creates a new lab
+    Creates a new lab in eve-ng based on the contents of a toml config file.
     """
     config = input("Enter the name of the config file to load: ")
     logger.info(f"Loading config file '{config}'")
     new_lab = utils.load_toml(config)
     logger.debug(f"Contents of '{config}'\n{new_lab}")
     client.login()
+    logger.debug(f"Calling create_lab with args {new_lab["lab"]}")
     response = client.create_lab(new_lab["lab"])
+    logger.debug(f"Response from calling create_lab\n{response}")
     if response["code"] == 200:
         for node in new_lab["nodes"]:
+            logger.debug(f"Calling create_node with args {new_lab["lab"]["name"]}, {node}")
             client.create_node(new_lab["lab"]["name"], node)
+            logger.debug(f"Response from calling create_node\n{response}")
+        for cable in new_lab["cables"]:
+            logger.debug(f"The cable is: \n{cable}")
+            src_node = cable.get("source")
+            dst_node = cable.get("destination")
+            nodes = client.get_lab_nodes(new_lab["lab"]["name"])
+            nodes = nodes["data"]
+            logger.debug(f"The nodes list is: \n{nodes}")
+            # Find the node ID based on node name
+            for key, value in nodes.items():
+                if value["name"] == src_node:
+                    src_node_id = value["id"]
+                if value["name"] == dst_node:
+                    dst_node_id = value["id"]
+            # Find link IDs
+            src_label = cable.get("source_label")
+            dst_label = cable.get("destination_label")
+            # Get the interface index to be used for connection
+            src_node_ports = client.get_intf(new_lab["lab"]["name"], src_node_id)["data"]["ethernet"]
+            logger.debug(f"The source node ports is: \n{src_node_ports}")
+            for index, item in enumerate(src_node_ports):
+                if src_label == item["name"]:
+                    src_intf_id = index
+            # Get the interface index to be used for connection
+            dst_node_ports = client.get_intf(new_lab["lab"]["name"], dst_node_id)["data"]["ethernet"]
+            logger.debug(f"The destination node ports is: \n{dst_node_ports}")
+            for index, item in enumerate(dst_node_ports):
+                if dst_label == item["name"]:
+                    dst_intf_id = index
+            # Create the network bridge for the connection
+            bid_data = {"name":"Net-1","type":"bridge","left":940,"top":196,"visibility":1}
+            logger.debug(f"Calling create_network with args {new_lab["lab"]["name"]} and {bid_data}")
+            bid_result = client.create_network(new_lab["lab"]["name"], bid_data)
+            logger.debug(f"Response from calling create_network\n{bid_result}")
+            bid = bid_result["data"].get("id")
+            # Create network connection between two nodes
+            connection_data = {str(src_intf_id): bid}
+            client.set_intf(new_lab["lab"]["name"], src_node_id, connection_data)
+            logger.debug(f"The set interface is: \n{bid_result}")
+            connection_data = {dst_intf_id: str(bid)}
+            client.set_intf(new_lab["lab"]["name"], dst_node_id, connection_data)
+            logger.debug(f"The set interface is: \n{bid_result}")
+            # Hide network bridge in the GUI
+            client.modify_network(new_lab["lab"]["name"], bid, {"visibility":0})
         print("Lab has been successfully created")
         logger.info(f"Successfully created lab {config}")
     elif response["code"] == 400:
