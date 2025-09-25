@@ -1,10 +1,12 @@
+# src/devnetlabs/labs.py
+
 import logging
 
 from devnetlabs import eveng, menu, utils
 
 logger = logging.getLogger(__name__)
 
-# Create an eveng client to interact with the eveng api
+# Create an eveng client
 client = eveng.EveNgClient("192.168.11.99")
 
 
@@ -29,122 +31,165 @@ def labs():
         labs_menu.get_input()
 
 
+def define_lab_details(lab_data):
+    """
+    Define the parameters needed to create a new lab
+    """
+    # Remove items that are not needed for a new lab
+    lab_data.pop("id")
+    lab_data.pop("lock")
+    lab_data.pop("filename")
+    # Add items not in existing lab
+    lab_data["path"] = "/"
+    # Rename the lab so it doesn't conflict with existing
+    current_name = lab_data["name"]
+    lab_data["name"] = f"{current_name}temp"
+    return lab_data
+
+
+def build_nodes_list(lab_nodes):
+    """
+    Builds a list of nodes removing items that aren't needed to re-create the lab
+
+    Args:
+        lab_nodes (dict): A dictionary obtained from an existing eve-ng lab.
+
+    Returns:
+        nodes (list): A list of dictionaries describing how to configure a node.
+        node_map (list): A list of dictionaries mapping an ID to a name.
+    """
+    nodes = []
+    node_map = []
+    for node in lab_nodes.values():
+        # Remove items that are not needed for a new lab
+        node.pop("url")
+        node.pop("uuid")
+        node.pop("config")
+        node.pop("config_list")
+        nodes.append(node)
+        node_map.append({f"node{node['id']}": node["name"]})
+    return nodes, node_map
+
+
+def build_cable_list(lab_cables, node_map):
+    """
+    Builds a list of cable connections from an existing eve-ng lab.
+    Replaces node IDs with names and removes unnecessary fields.
+    """
+    # Flatten node_map into a single lookup dictionary
+    node_lookup = {}
+    for node in node_map:
+        node_lookup.update(node)
+
+    cables = []
+    for cable in lab_cables:
+        cable = {k: v for k, v in cable.items() if k != "network_id"}
+        cable["source"] = node_lookup.get(cable["source"], cable["source"])
+        cable["destination"] = node_lookup.get(cable["destination"], cable["destination"])
+        cables.append(cable)
+
+    return cables
+
+
 def build_toml_from_lab():
     """
     Returns a toml formatted file representing the specified eve-ng lab
     """
     toml_data = {}
-    lab_exists = False
+    # Prompt user for the name of an existing eve-ng lab
     lab_name = input("Enter the name of the existing eve-ng lab: ")
     logger.debug(f"Building toml file from eve-ng lab {lab_name}")
-    file_lab_name = input("Enter the name of the file to be written: ")
-    client.login()
-    response = client.list_labs()
-    if response["code"] == 200:
-        for lab in response["data"]["labs"]:
-            if lab_name in lab["file"]:
-                lab_exists = True
-    if lab_exists:
-        # Prepare the lab details
-        lab_data = client.get_lab(lab_name)["data"]
-        lab_data.pop("id")
-        lab_data.pop("filename")
-        lab_data["path"] = "/"
-        lab_data["name"] = "devnetlab"
-        toml_data["lab"] = lab_data
-        # Prepare the nodes
-        nodes = list()
-        lab_nodes = client.get_lab_nodes(lab_name)["data"]
-        for node in lab_nodes.values():
-            node.pop("url")
-            node.pop("ram")
-            node.pop("cpu")
-            node.pop("uuid")
-            node.pop("config")
-            node.pop("config_list")
-            nodes.append(node)
-        toml_data["nodes"] = nodes
-        # Prepare the cables
-        lab_cables = client.get_lab_topology(lab_name)["data"]
-        for cable in lab_cables:
-            cable.pop("network_id")
-        toml_data["cables"] = lab_cables
-        if utils.write_toml(file_lab_name, toml_data):
-            logger.info(f"Successfully saved lab '{lab_name}' to file '{file_lab_name}'")
-        else:
-            logger.debug(f"User chose not to overwrite file '{file_lab_name}'")
+
+    # Get existing lab information
+    try:
+        client.login()
+        lab_data = client.get(f"labs/{lab_name}.unl")["data"]
+        logger.debug(f"Response from get lab\n{lab_data}")
+        lab_nodes = client.get(f"labs/{lab_name}.unl/nodes")["data"]
+        logger.debug(f"Response from getting nodes\n{lab_nodes}")
+        lab_cables = client.get(f"labs/{lab_name}.unl/topology")["data"]
+        logger.debug(f"Response from getting topology\n{lab_cables}")
+        client.logout()
+    except requests.exceptions.RequestException as err:
+        print(f"An error occurred: \n{err}")
+
+    # Prepare the lab details
+    toml_data["lab"] = define_lab_details(lab_data)
+
+    # Prepare the nodes
+    nodes, node_map = build_nodes_list(lab_nodes)
+    toml_data["nodes"] = nodes
+
+    # Prepare the cables
+    toml_data["cables"] = build_cable_list(lab_cables, node_map)
+
+    # Write data to a toml file
+    if utils.write_toml(lab_name + ".toml", toml_data):
+        logger.info(f"Successfully saved lab '{lab_name}' to file '{lab_name}.toml'")
     else:
-        print("The lab you requested does not exist")
+        logger.debug(f"User chose not to overwrite file '{file_lab_name}'")
     input("Press [ENTER] to continue...")
+
+
+def find_node_id_by_name(nodes, src_node, dst_node):
+    src_node_id = dst_node_id = ""
+    for key, value in nodes.items():
+        if value["name"] == src_node:
+            src_node_id = value["id"]
+        if value["name"] == dst_node:
+            dst_node_id = value["id"]
+    return src_node_id, dst_node_id
+
+
+def get_interface_index(ports, label):
+    for index, item in enumerate(ports):
+        if label == item["name"]:
+            intf_id = index
+    return str(intf_id)
 
 
 def create_lab():
     """
     Creates a new lab in eve-ng based on the contents of a toml config file.
     """
-    config = input("Enter the name of the config file to load: ")
-    logger.info(f"Loading config file '{config}'")
-    new_lab = utils.load_toml(config)
-    logger.debug(f"Contents of '{config}'\n{new_lab}")
-    client.login()
-    logger.debug(f"Calling create_lab with args {new_lab["lab"]}")
-    response = client.create_lab(new_lab["lab"])
-    logger.debug(f"Response from calling create_lab\n{response}")
-    if response["code"] == 200:
-        for node in new_lab["nodes"]:
-            logger.debug(f"Calling create_node with args {new_lab["lab"]["name"]}, {node}")
-            client.create_node(new_lab["lab"]["name"], node)
-            logger.debug(f"Response from calling create_node\n{response}")
-        for cable in new_lab["cables"]:
-            logger.debug(f"The cable is: \n{cable}")
+    config_file = input("Enter the name of the config file to load: ")
+    logger.info(f"Loading config file '{config_file}'")
+    config = utils.load_toml(config_file)
+    logger.debug(f"Contents of '{config_file}'\n{config}")
+    lab_name = config["lab"]["name"] + ".unl"
+
+    # Create lab from config file
+    try:
+        client.login()
+        client.post("labs", config["lab"])
+        for node in config["nodes"]:
+            client.post(f"labs/{lab_name}/nodes", node)
+        nodes = client.get(f"labs/{lab_name}/nodes")["data"]
+        for cable in config["cables"]:
             src_node = cable.get("source")
             dst_node = cable.get("destination")
-            nodes = client.get_lab_nodes(new_lab["lab"]["name"])
-            nodes = nodes["data"]
-            logger.debug(f"The nodes list is: \n{nodes}")
-            # Find the node ID based on node name
-            for key, value in nodes.items():
-                if value["name"] == src_node:
-                    src_node_id = value["id"]
-                if value["name"] == dst_node:
-                    dst_node_id = value["id"]
-            # Find link IDs
             src_label = cable.get("source_label")
             dst_label = cable.get("destination_label")
-            # Get the interface index to be used for connection
-            src_node_ports = client.get_intf(new_lab["lab"]["name"], src_node_id)["data"]["ethernet"]
-            logger.debug(f"The source node ports is: \n{src_node_ports}")
-            for index, item in enumerate(src_node_ports):
-                if src_label == item["name"]:
-                    src_intf_id = index
-            # Get the interface index to be used for connection
-            dst_node_ports = client.get_intf(new_lab["lab"]["name"], dst_node_id)["data"]["ethernet"]
-            logger.debug(f"The destination node ports is: \n{dst_node_ports}")
-            for index, item in enumerate(dst_node_ports):
-                if dst_label == item["name"]:
-                    dst_intf_id = index
+            # Find node ID by finding the node name that matches the node specified by cable
+            src_node_id, dst_node_id = find_node_id_by_name(nodes, src_node, dst_node)
+            src_node_ports = client.get(f"labs/{lab_name}/nodes/{src_node_id}/interfaces")["data"]["ethernet"]
+            dst_node_ports = client.get(f"labs/{lab_name}/nodes/{dst_node_id}/interfaces")["data"]["ethernet"]
             # Create the network bridge for the connection
             bid_data = {"name":"Net-1","type":"bridge","left":940,"top":196,"visibility":1}
-            logger.debug(f"Calling create_network with args {new_lab["lab"]["name"]} and {bid_data}")
-            bid_result = client.create_network(new_lab["lab"]["name"], bid_data)
-            logger.debug(f"Response from calling create_network\n{bid_result}")
+            bid_result = client.post(f"labs/{lab_name}/networks", bid_data)
             bid = bid_result["data"].get("id")
             # Create network connection between two nodes
-            connection_data = {str(src_intf_id): bid}
-            client.set_intf(new_lab["lab"]["name"], src_node_id, connection_data)
-            logger.debug(f"The set interface is: \n{bid_result}")
-            connection_data = {dst_intf_id: str(bid)}
-            client.set_intf(new_lab["lab"]["name"], dst_node_id, connection_data)
-            logger.debug(f"The set interface is: \n{bid_result}")
+            src_idx = get_interface_index(src_node_ports, src_label)
+            dst_idx = get_interface_index(dst_node_ports, dst_label)
+            client.put(f"labs/{lab_name}/nodes/{src_node_id}/interfaces", {src_idx: bid})
+            client.put(f"labs/{lab_name}/nodes/{dst_node_id}/interfaces", {dst_idx: bid})
             # Hide network bridge in the GUI
-            client.modify_network(new_lab["lab"]["name"], bid, {"visibility":0})
-        print("Lab has been successfully created")
-        logger.info(f"Successfully created lab {config}")
-    elif response["code"] == 400:
-        logger.debug(f"Failed to load and create lab {config}")
-        print(utils.colorme(response["message"], "red"))
-    else:
-        print(utils.colorme(response["message"], "red"))
+            client.put(f"labs/{lab_name}/networks/{bid}", {"visibility":0})
+    except Exception as err:
+        print(f"An error occurred: \n{err}")
+    finally:
+        client.logout()
+        
     input("Press [ENTER] to continue...")
 
 
@@ -153,9 +198,16 @@ def delete_lab():
     Delete a lab from eve-ng
     """
     lab_name = input("Enter the name of the lab to delete: ")
-    client.login()
-    response = client.delete_lab(lab_name)
-    print(response)
+    url = f"labs/{lab_name}.unl"
+    try:
+        client.login()
+        response = client.delete(url)
+        logger.debug(f"Deleted lab {lab_name}, response from server was {response}")
+    except Exception as err:
+        print(f"An error occurred: \n{err}")
+    finally:
+        client.logout()
+    print(f"The eve-ng lab '{lab_name}' has been deleted.")
     input("Press [ENTER] to continue...")
 
 
@@ -164,7 +216,6 @@ def devnetlabs_exit():
     Clears the screen, logs an exit message, and terminates the application.
     """
     utils.clear_screen()
-    client.logout()
     logger.info("Exiting application")
     raise SystemExit("")
 
