@@ -12,7 +12,7 @@ class EveNgClient:
     def login(self, username="admin", password="eve"):
         """Logs in using session-based authentication."""
         url = f"{self.base_url}/auth/login"
-        payload = {"username": username, "password": password}
+        payload = {"username": username, "password": password, "html5": "-1"}
         response = self.session.post(url, json=payload)
         response.raise_for_status()
 
@@ -31,15 +31,13 @@ class EveNgClient:
 
     def post(self, endpoint, data=None):
         url = f"{self.base_url}/{endpoint}"
-        print(url)
-        print(data)
-        response = self.session.post(url, data=json.dumps(data))
+        response = self.session.post(url, json=data)
         response.raise_for_status()
         return response.json()
 
     def put(self, endpoint, data=None):
         url = f"{self.base_url}/{endpoint}"
-        response = self.session.put(url, data=json.dumps(data))
+        response = self.session.put(url, json=data)
         response.raise_for_status()
         return response.json()
 

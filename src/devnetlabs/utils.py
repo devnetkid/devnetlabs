@@ -1,10 +1,10 @@
 import logging
 import os
 import platform
+import tomlkit
 from datetime import datetime
 from pathlib import Path
 
-import toml
 
 
 def setup_environment():
@@ -53,7 +53,7 @@ def write_toml(filename, content):
             return False
     try:
         with open(config_path, "w") as f:
-            toml.dump(content, f)
+            tomlkit.dump(content, f)
         print(f"File '{config_path}' saved successfully.")
         return True
     except IOError as err:
@@ -73,9 +73,38 @@ def load_toml(filename):
         return False
     try:
         with open(config_path, "r") as f:
-            return toml.load(f)
+            return tomlkit.load(f)
     except IOError as err:
         print(f"Error loading file '{config_path}': {err}")
+
+
+def load_config(filename):
+    """
+    Loads a config file for use in eve-ng.
+
+    Args:
+        filename (str): The filename of the config to load.
+    """
+    config_path = Path.home() / "devnetlabs/labs/" / filename
+    if not config_path.exists():
+        print(f"File '{config_path}' does not exist.")
+        return False
+    try:
+        with open(config_path, "r") as f:
+            return f.readlines()
+    except IOError as err:
+        print(f"Error loading file '{config_path}': {err}")
+
+
+def list_dir():
+    """List the contents of a specified directory"""
+    # Define base directories
+    folders = []
+    base_dir = Path.home() / "devnetlabs/labs"
+    fullpath = [item for item in base_dir.iterdir() if item.is_dir()]
+    for folder in fullpath:
+        folders.append(folder.name)
+    return folders
 
 
 def colorme(msg, color):
