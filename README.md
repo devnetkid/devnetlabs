@@ -13,11 +13,8 @@ If you don't set them, the default value for path is ~/devnetlabs/logs/ and info
 
 From the terminal of choice type `labs` to start the menu system. You will see something similar to the following:
 
- ____             _   _      _   _          _
-|  _ \  _____   _| \ | | ___| |_| |    __ _| |__  ___
-| | | |/ _ \ \ / /  \| |/ _ \ __| |   / _` | '_ \/ __|
-| |_| |  __/\ V /| |\  |  __/ |_| |__| (_| | |_) \__ \
-|____/ \___| \_/ |_| \_|\___|\__|_____\__,_|_.__/|___/
+```
+DevNetLabs
 
   Labs Menu
 
@@ -26,24 +23,29 @@ From the terminal of choice type `labs` to start the menu system. You will see s
     3 - Exit
 
   Select an option >> 
+```
 
 From here you want to select 1 to go to the Labs menu.
 
 You will now have the following optons:
 
+```
     1 - Load a lab
     2 - Return to the main menu
     3 - Exit
+```
 
 Select 1 to Load a lab.
 
 At this point you should see a list of labs that you have created. If you don't see anything make sure you have added a lab. See the section on Adding Labs.
 
+```
 1 - Basic-NAT
 2 - DHCP
 3 - EIGRP
 4 - OSPF
 5 - BGP
+```
 
 Once you make a selection here it will create the lab in eve-ng, startup all nodes, and load your base configs.
 
