@@ -1,7 +1,5 @@
 # src/devnetlabs/labs.py
 
-# src/devnetlabs/labs.py
-
 import logging
 import os
 import requests
@@ -22,7 +20,7 @@ def define_lab_details(lab_data: dict) -> dict:
     """Define the parameters needed to create a new lab."""
     for key in ["id", "lock", "filename"]:
         lab_data.pop(key, None)
-    
+
     lab_data["path"] = "/"
     lab_data["name"] = f"{lab_data.get('name', 'unnamed')}_temp"
     return lab_data
@@ -50,7 +48,9 @@ def build_cable_list(lab_cables: list, node_map: list) -> list:
     for cable in lab_cables:
         new_cable = {k: v for k, v in cable.items() if k != "network_id"}
         new_cable["source"] = node_lookup.get(new_cable["source"], new_cable["source"])
-        new_cable["destination"] = node_lookup.get(new_cable["destination"], new_cable["destination"])
+        new_cable["destination"] = node_lookup.get(
+            new_cable["destination"], new_cable["destination"]
+        )
         cables.append(new_cable)
 
     return cables
@@ -88,7 +88,7 @@ def build_toml_from_lab():
         print(f"Successfully saved to {file_name}")
     else:
         logger.debug(f"User chose not to overwrite file '{file_name}'")
-        
+
     input("Press [ENTER] to continue...")
 
 
@@ -119,7 +119,7 @@ def create_lab(config_data: dict = None):
         except Exception as e:
             print(f"Error loading {config_file}: {e}")
             return
-            
+
     lab_name = f"{config_data['lab']['name']}.unl"
 
     logger.info(f"Checking if lab {lab_name} already exists.")
@@ -129,7 +129,7 @@ def create_lab(config_data: dict = None):
         if response.get("code") == 200:
             logger.warning(f"The lab {lab_name} already exists.")
             print(f"The lab {lab_name} already exists.")
-            return # Don't exit(), just return to previous menu
+            return  # Don't exit(), just return to previous menu
     except requests.exceptions.RequestException:
         logger.info("Confirmed lab does not exist, attempting to create lab.")
 
@@ -137,32 +137,48 @@ def create_lab(config_data: dict = None):
         client.post("labs", config_data["lab"])
         for node in config_data.get("nodes", []):
             client.post(f"labs/{lab_name}/nodes", node)
-            
+
         nodes = client.get(f"labs/{lab_name}/nodes")["data"]
-        
+
         for cable in config_data.get("cables", []):
             src_node, dst_node = cable.get("source"), cable.get("destination")
-            src_label, dst_label = cable.get("source_label"), cable.get("destination_label")
-            
+            src_label, dst_label = cable.get("source_label"), cable.get(
+                "destination_label"
+            )
+
             src_node_id, dst_node_id = find_node_id_by_name(nodes, src_node, dst_node)
-            
-            src_node_ports = client.get(f"labs/{lab_name}/nodes/{src_node_id}/interfaces")["data"]["ethernet"]
-            dst_node_ports = client.get(f"labs/{lab_name}/nodes/{dst_node_id}/interfaces")["data"]["ethernet"]
-            
-            bid_data = {"name": "Net-1", "type": "bridge", "left": 940, "top": 196, "visibility": 1}
+
+            src_node_ports = client.get(
+                f"labs/{lab_name}/nodes/{src_node_id}/interfaces"
+            )["data"]["ethernet"]
+            dst_node_ports = client.get(
+                f"labs/{lab_name}/nodes/{dst_node_id}/interfaces"
+            )["data"]["ethernet"]
+
+            bid_data = {
+                "name": "Net-1",
+                "type": "bridge",
+                "left": 940,
+                "top": 196,
+                "visibility": 1,
+            }
             bid_result = client.post(f"labs/{lab_name}/networks", bid_data)
             bid = bid_result["data"].get("id")
-            
+
             src_idx = get_interface_index(src_node_ports, src_label)
             dst_idx = get_interface_index(dst_node_ports, dst_label)
-            
-            client.put(f"labs/{lab_name}/nodes/{src_node_id}/interfaces", {src_idx: bid})
-            client.put(f"labs/{lab_name}/nodes/{dst_node_id}/interfaces", {dst_idx: bid})
+
+            client.put(
+                f"labs/{lab_name}/nodes/{src_node_id}/interfaces", {src_idx: bid}
+            )
+            client.put(
+                f"labs/{lab_name}/nodes/{dst_node_id}/interfaces", {dst_idx: bid}
+            )
             client.put(f"labs/{lab_name}/networks/{bid}", {"visibility": 0})
-            
+
         logger.info("The lab was successfully created.")
         print(f"Successfully created lab {lab_name}")
-        
+
     except Exception as err:
         print(f"An error occurred creating the lab: \n{err}")
     finally:
@@ -189,10 +205,10 @@ def start_nodes(lab: str, nodes: list):
     """Starts each node listed in the lab_settings."""
     logger.info("Starting lab nodes")
     for node in nodes:
-        node_name = node.get('name', 'Unknown')
+        node_name = node.get("name", "Unknown")
         logger.info(f"Starting node {node_name} ...")
         print(f"Starting node {node_name} ...")
-        
+
         endpoint = f"labs/{lab}.unl/nodes/{node['id']}/start"
         try:
             client.login()
@@ -204,28 +220,29 @@ def start_nodes(lab: str, nodes: list):
 
 def get_node_status(lab: str, node: dict) -> dict:
     """Fetches node details and extracts status and telnet port."""
+    logger.info("Getting node status...")
     if not lab.endswith(".unl"):
         lab = f"{lab}.unl"
 
     endpoint = f"labs/{lab}/nodes/{node['id']}"
     client.login()
     response = client.get(endpoint)
-    
-    node_data = response.get('data', {})
-    status = node_data.get('status')
-    url = node_data.get('url', "")
-    
+
+    node_data = response.get("data", {})
+    status = node_data.get("status")
+    url = node_data.get("url", "")
+
     telnet_ip = telnet_port = eve_ip = None
-    
+
     if ":" in url:
         telnet_ip = url.split(":")[-2]
         telnet_port = url.split(":")[-1]
 
     if telnet_ip and "//" in telnet_ip:
         eve_ip = telnet_ip.lstrip("//")
-    
+
     return {
-        "name": node_data.get('name'),
+        "name": node_data.get("name"),
         "type": node_data.get("type"),
         "status": status,
         "port": telnet_port,
@@ -235,39 +252,45 @@ def get_node_status(lab: str, node: dict) -> dict:
 
 def load_base_configs(lab: str, lab_name: str, nodes: list):
     logger.info("Loading base configs...")
-    
+
     for node in nodes:
         delay = 10
         max_attempts = 30
-        node_name = node['name']
+        node_name = node["name"]
         logger.info(f"Current node {node_name}")
+        node_info = get_node_status(lab_name, node)
+        logger.info(f"Node status for node {node_name}: {node_info}")
+
+        # If type is other, like vpcs, then go to next iteration
+        if node_info["type"] != "qemu":
+            logger.info("Node is not a qemu node, getting next iteration.")
+            continue
 
         # Build the dynamic path for the config file
         config_path = f"{lab}/configs/{node_name}.cfg"
         config_lines = utils.load_config(config_path)
-        
+
         for attempt in range(1, max_attempts + 1):
             logger.info(f"Attempt {attempt}: loading config for node {node_name}")
-            node_info = get_node_status(lab_name, node)
             print(f"Waiting for node {node_info['name']} to complete booting ...")
-            
-            if node_info["type"] == "qemu" and node_info["eve_ip"] and node_info["port"]:
+
+            if (node_info["eve_ip"] and node_info["port"]):
                 device_settings = {
                     "device_ip": node_info["eve_ip"],
                     "device_type": "cisco_ios_telnet",
                     "port": node_info["port"],
                     "username": "admin",
-                    "password": "cisco"
+                    "password": "cisco",
                 }
-                
+
                 device = connector.DeviceConnection(**device_settings)
-                
+
                 try:
                     device.connect()
                     device.write_config(config_lines)
                     device.disconnect()
                     print(f"Successfully loaded config for {node_name}")
-                    break # Success, exit retry loop
+                    break  # Success, exit retry loop
                 except Exception as e:
                     logger.debug(f"SSH/Telnet not ready yet: {e}")
             
@@ -284,13 +307,13 @@ def devnetlabs_exit():
 def load_lab(lab: str):
     logger.info(f"Loading lab.toml file from {lab}")
     filename = Path(lab) / "lab.toml"
-    
+
     try:
         lab_settings = utils.load_toml(str(filename))
         create_lab(lab_settings)
         lab_name = lab_settings["lab"]["name"]
         lab_nodes = lab_settings.get("nodes", [])
-        
+
         start_nodes(lab_name, lab_nodes)
         load_base_configs(lab, lab_name, lab_nodes)
     except Exception as e:
@@ -307,9 +330,9 @@ def list_lab():
 
     for index, lab in enumerate(labs, start=1):
         print(f"{index} - {lab}")
-        
+
     response = input("\nEnter the number next to the lab you would like to run: ")
-    
+
     # BEST PRACTICE: Input Validation
     try:
         choice_idx = int(response) - 1
@@ -318,7 +341,7 @@ def list_lab():
         load_lab(labs[choice_idx])
     except (ValueError, IndexError):
         print("Invalid selection. Please enter a valid number from the list.")
-    
+
     input("Press [ENTER] to continue...")
 
 
@@ -373,409 +396,3 @@ def main_menu():
     )
     while True:
         main_menu.get_input()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

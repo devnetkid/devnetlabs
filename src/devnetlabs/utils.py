@@ -6,7 +6,6 @@ from datetime import datetime
 from pathlib import Path
 
 
-
 def setup_environment():
     # Define base directories
     base_dir = Path.home() / "devnetlabs"
@@ -18,7 +17,7 @@ def setup_environment():
     labs_dir.mkdir(parents=True, exist_ok=True)
 
     # Dynamically create the log filename using current timestamp
-    #logname = f"devnetlabs_{datetime.now():%Y-%m-%d_%H-%M-%S}.log"
+    # logname = f"devnetlabs_{datetime.now():%Y-%m-%d_%H-%M-%S}.log"
     log_file = "devnetlabs.log"
 
     # Check environment variables for log level, defaults to info if none provided

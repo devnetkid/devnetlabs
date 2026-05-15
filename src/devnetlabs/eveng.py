@@ -4,6 +4,7 @@ import json
 
 import requests
 
+
 class EveNgClient:
     def __init__(self, host):
         self.base_url = f"http://{host}/api"
@@ -46,4 +47,3 @@ class EveNgClient:
         response = self.session.delete(url)
         response.raise_for_status()
         return response.status_code
-

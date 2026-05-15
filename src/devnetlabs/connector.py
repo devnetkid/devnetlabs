@@ -1,8 +1,10 @@
 import json
 import logging
 import requests
+
 # Needed to prevent InsecureRequestWarning from being printed to stdout
 from requests.packages import urllib3
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from netmiko import ConnectHandler
 from netmiko.exceptions import AuthenticationException
@@ -13,6 +15,7 @@ from netmiko.exceptions import SSHException
 
 logger = logging.getLogger(__name__)
 logger.info("Loading connect module")
+
 
 class DeviceConnection:
     """
@@ -42,7 +45,7 @@ class DeviceConnection:
         try:
             self.connection = ConnectHandler(**device)
         except NetmikoTimeoutException as err:
-            print(f"Unable to connect to {device["host"]} on port {device["port"]}") 
+            print(f"Unable to connect to {device["host"]} on port {device["port"]}")
             print("Make sure device is reachable and running ssh")
 
     def disconnect(self):
@@ -55,4 +58,3 @@ class DeviceConnection:
             output = self.connection.send_config_set(config)
         except ReadTimeout:
             logger.info("A read timeout exception occured")
-
